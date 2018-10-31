@@ -56,6 +56,18 @@ func (e ParseError) Error() string {
 	return b.String()
 }
 
+type WarningError struct {
+	err error
+}
+
+func newWarningError(err error) *WarningError {
+	return &WarningError{err}
+}
+
+func (e WarningError) Error() string {
+	return "Warning: " + e.err.Error()
+}
+
 var allowAll = &RobotsData{allowAll: true}
 var disallowAll = &RobotsData{disallowAll: true}
 var emptyGroup = &Group{}
@@ -127,7 +139,15 @@ func FromBytes(body []byte) (r *RobotsData, err error) {
 	parser := newParser(tokens)
 	r.groups, r.Host, r.Sitemaps, errs = parser.parseAll()
 	if len(errs) > 0 {
-		return nil, newParseError(errs)
+		for _, err := range errs {
+			// 1. if we have non-warning error(s) in the mix - consider robots.txt as broken
+			if _, ok := err.(*WarningError); !ok {
+				return nil, newParseError(errs)
+			}
+		}
+
+		// 2. otherwise allow ignoring warning(s)
+		return r, newParseError(errs)
 	}
 
 	return r, nil

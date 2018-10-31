@@ -251,6 +251,62 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
+const robotsTextErrs2 = `Disallow: /
+User-agent: Google
+Disallow: /search`
+
+func TestParseErrors2(t *testing.T) {
+	if r, err := FromString(robotsTextErrs2); err == nil {
+		t.Fatal("Expected error.")
+	} else {
+		if pe, ok := err.(*ParseError); !ok {
+			t.Fatal("Expected ParseError.")
+		} else if len(pe.Errs) != 1 {
+			t.Fatalf("Expected 1 error, got %d:\n%v", len(pe.Errs), pe.Errs)
+		}
+
+		if r == nil {
+			t.Log(err)
+			t.Fatal("Expected robots data to be returned next to the warning errors")
+		}
+	}
+}
+
+const robotsTextErrs3 = `Disallow: /
+User-agent: Google
+Crawl-delay: fail
+`
+
+func TestParseErrors3(t *testing.T) {
+	if r, err := FromString(robotsTextErrs3); err == nil {
+		t.Fatal("Expected error.")
+	} else {
+		if pe, ok := err.(*ParseError); !ok {
+			t.Fatal("Expected ParseError.")
+		} else if len(pe.Errs) != 2 {
+			t.Fatalf("Expected 2 error, got %d:\n%v", len(pe.Errs), pe.Errs)
+
+			werr := 0
+			rerr := 0
+			for _, err := range pe.Errs {
+				if _, ok := err.(*WarningError); ok {
+					werr++
+				} else {
+					rerr++
+				}
+			}
+
+			if werr != 1 || rerr != 1 {
+				t.Fatalf("Expected 1 WarningError and 1 normal Error, but got %d WarningError(s) and %d normal Error(s)", werr, rerr)
+			}
+		}
+
+		if r != nil {
+			t.Fatal("Expected robots data to be nil")
+		}
+	}
+}
+
 const robotsTextJustHTML = `<!DOCTYPE html>
 <html>
 <title></title>
